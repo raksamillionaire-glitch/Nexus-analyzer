@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NEXUS // Chart Analyzer</title>
+<style>
+:root{--bg:#05070d;--panel:rgba(14,20,34,.78);--line:rgba(0,255,234,.18);--cyan:#00ffea;--mag:#ff2bd6;--text:#dbe9ff;--muted:#6f88a8;--buy:#00ff9c;--sell:#ff3d6e;--hold:#ffc53d;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{background:
+  radial-gradient(900px 500px at 15% -10%,rgba(0,255,234,.14),transparent 60%),
+  radial-gradient(800px 500px at 110% 10%,rgba(255,43,214,.12),transparent 60%),
+  linear-gradient(rgba(0,255,234,.05) 1px,transparent 1px) 0 0/28px 28px,
+  linear-gradient(90deg,rgba(0,255,234,.05) 1px,transparent 1px) 0 0/28px 28px,
+  var(--bg);}
+.wrap{max-width:660px;margin:0 auto;padding:18px 14px 40px}
+.brand{display:flex;align-items:center;gap:12px;margin:6px 0 4px}
+.core{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--cyan) 25%,transparent 60%);box-shadow:0 0 22px var(--cyan),0 0 44px rgba(0,255,234,.35);animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(.86);opacity:.75}}
+h1{font-size:22px;margin:0;letter-spacing:.14em;background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px}
+.label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin:14px 0 8px;font-family:ui-monospace,Menlo,monospace}
+.label:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{appearance:none;border:1px solid var(--line);background:rgba(0,255,234,.04);color:var(--text);padding:9px 13px;border-radius:999px;font-size:14px;cursor:pointer;font-family:ui-monospace,Menlo,monospace}
+.chip.on{background:linear-gradient(90deg,rgba(0,255,234,.22),rgba(255,43,214,.22));border-color:var(--cyan);box-shadow:0 0 14px rgba(0,255,234,.35);color:#fff}
+.chip.tf{padding:7px 11px;font-size:13px}
+.btn{display:block;width:100%;margin-top:10px;padding:14px;border-radius:12px;border:1px solid var(--cyan);background:linear-gradient(90deg,rgba(0,255,234,.2),rgba(255,43,214,.2));color:#fff;font-size:15px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 20px rgba(0,255,234,.25);text-align:center;font-family:inherit}
+.btn:first-of-type{margin-top:0}
+.btn.ghost{background:transparent;box-shadow:none;border-color:var(--line);color:var(--muted)}
+.btn:disabled{opacity:.35;cursor:default;box-shadow:none}
+.fileinput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden}
+.scanwrap{position:relative;margin-top:12px;display:none;overflow:hidden;border-radius:12px}
+.scanwrap.show{display:block}
+canvas{width:100%;height:auto;border-radius:12px;display:block;border:1px solid var(--line)}
+.scan{position:absolute;left:0;right:0;height:3px;top:0;background:var(--cyan);box-shadow:0 0 16px 4px var(--cyan);opacity:0;pointer-events:none}
+.scanning .scan{opacity:1;animation:sweep 1.6s linear infinite}
+@keyframes sweep{0%{top:0}100%{top:calc(100% - 3px)}}
+.status{font-size:13px;margin-top:10px;color:var(--muted);min-height:18px;font-family:ui-monospace,Menlo,monospace}
+.status.err{color:var(--sell)}
+.verdict{font-family:ui-monospace,Menlo,monospace;font-size:34px;font-weight:800;letter-spacing:.2em;text-align:center;padding:16px;border-radius:12px;color:#05070d}
+.verdict.BUY{background:var(--buy);box-shadow:0 0 30px rgba(0,255,156,.5)}
+.verdict.SELL{background:var(--sell);box-shadow:0 0 30px rgba(255,61,110,.5)}
+.verdict.HOLD{background:var(--hold);box-shadow:0 0 30px rgba(255,197,61,.45)}
+.agree{text-align:center;margin-top:10px;font-size:13px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.levels div{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;font-family:ui-monospace,Menlo,monospace}
+.levels b{display:block;font-size:10px;letter-spacing:.14em;color:var(--muted);font-weight:500;margin-bottom:4px;text-transform:uppercase}
+.levels .e{color:#5ec8ff}.levels .s{color:var(--sell)}.levels .t{color:var(--buy)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px}
+td,th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--cyan);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+td.sig{font-family:ui-monospace,Menlo,monospace;font-weight:700}
+.BUY{color:var(--buy)}.SELL{color:var(--sell)}.HOLD{color:var(--hold)}
+.disc{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.5}
+.hidden{display:none!important}
+.plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.plan-grid{grid-template-columns:1fr}}
+.plan{border:1px solid var(--line);border-radius:14px;padding:14px;background:rgba(0,0,0,.3)}
+.plan.pro{border-color:var(--mag);box-shadow:0 0 24px rgba(255,43,214,.25)}
+.plan .tier{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+.plan .price{font-size:30px;font-weight:800;margin:6px 0;font-family:ui-monospace,Menlo,monospace}
+.plan .price span{font-size:13px;color:var(--muted)}
+.plan ul{margin:8px 0 12px;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.7}
+.badge{display:inline-block;font-size:10px;letter-spacing:.14em;color:#05070d;background:linear-gradient(90deg,var(--cyan),var(--mag));padding:3px 8px;border-radius:999px;font-weight:700}
+.credit{margin:28px 0 0;text-align:center}
+.credit .by{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+.credit .name{display:inline-block;margin-top:6px;font-size:18px;font-weight:800;letter-spacing:.14em;background:linear-gradient(90deg,var(--cyan),var(--mag),var(--cyan));background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 3s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="core"></div>
+    <div>
+      <h1>NEXUS</h1>
+      <div class="sub">Multi-lens chart intelligence</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">01 · Capture</div>
+    <label class="btn" for="cam">📷 Scan chart with camera</label>
+    <input id="cam" class="fileinput" type="file" accept="image/*" capture="environment">
+    <label class="btn ghost" for="gal">🖼 Load from gallery</label>
+    <input id="gal" class="fileinput" type="file" accept="image/*">
+
+    <div class="label">02 · Market</div>
+    <div class="chips" id="markets"></div>
+
+    <div class="label">03 · Instrument</div>
+    <div class="chips" id="symbols"><span class="sub" style="font-size:12px">Select a market first</span></div>
+
+    <div class="label">04 · Timeframe</div>
+    <div class="chips" id="tfs"></div>
+
+    <div class="scanwrap" id="scanwrap">
+      <canvas id="cv"></canvas>
+      <div class="scan"></div>
+    </div>
+    <button class="btn" id="go" disabled>Run analysis</button>
+    <div class="status" id="status">// awaiting chart input</div>
+  </div>
+
+  <div class="card hidden" id="result">
+    <div class="label">Consensus signal</div>
+    <div class="verdict" id="verdict"></div>
+    <div class="agree" id="agree"></div>
+    <div class="levels">
+      <div class="e"><b>Entry</b><span id="lEntry">-</span></div>
+      <div class="s"><b>Stop loss</b><span id="lSl">-</span></div>
+      <div class="t"><b>Take profit</b><span id="lTp">-</span></div>
+    </div>
+    <div class="disc">Levels are positions on your image (0% = top, 100% = bottom), not live prices.</div>
+    <div class="label" style="margin-top:18px">Lens breakdown</div>
+    <table id="tbl"></table>
+    <div class="disc">Educational analysis only, not financial advice. The model reads a static photo and can be wrong. Confirm with live data from your broker and never risk money you cannot afford to lose.</div>
+  </div>
+
+  <div class="card">
+    <div class="label">05 · Subscription</div>
+    <div class="plan-grid">
+      <div class="plan">
+        <div class="tier">Free</div>
+        <div class="price">$0</div>
+        <ul><li>5 analyses per day</li><li>Consensus verdict</li></ul>
+        <button class="btn ghost" onclick="subscribe('Free')">Current plan</button>
+      </div>
+      <div class="plan pro">
+        <span class="badge">MOST POPULAR</span>
+        <div class="tier" style="margin-top:8px">Pro</div>
+        <div class="price">$19<span>/mo</span></div>
+        <ul><li>Unlimited analyses</li><li>Full lens breakdown</li><li>Verdict history</li></ul>
+        <button class="btn" onclick="subscribe('Pro')">Go Pro</button>
+      </div>
+    </div>
+    <div class="status" id="planNote">// payments not connected · preview only</div>
+  </div>
+
+  <div class="credit">
+    <div class="by">Build by</div>
+    <div class="name">RAKSA NHEAN</div>
+  </div>
+</div>
+
+<script>
+const STRATS = [
+  "Moving average trend","Support and resistance","RSI momentum","MACD crossover",
+  "Bollinger Bands","Volume and breakout","Candlestick patterns","Fibonacci retracement",
+  "Chart patterns (triangles, H&S, flags)","Market structure (HH / HL)"
+];
+const MARKETS = {
+  Forex:  ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","USD/CAD","USD/CHF","XAU/USD (Gold)"],
+  Crypto: ["BTC/USD","ETH/USD","SOL/USD","XRP/USD","BNB/USD","DOGE/USD"],
+  Stocks: ["AAPL","MSFT","NVDA","TSLA","AMZN","GOOGL","META"]
+};
+const TFS = ["1m","5m","15m","1h","4h","1D","1W"];
+
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+let base = null, b64 = null, market = null, symbol = null, tf = "1h";
+
+function chip(label, isTf, onPick, on){
+  const b = document.createElement("button");
+  b.className = "chip" + (isTf ? " tf" : "") + (on ? " on" : "");
+  b.textContent = label;
+  b.onclick = () => {
+    [...b.parentNode.children].forEach(c => c.classList.remove("on"));
+    b.classList.add("on");
+    onPick(label);
+  };
+  return b;
+}
+
+function buildPickers(){
+  Object.keys(MARKETS).forEach(m => $("markets").appendChild(chip(m, false, v => {
+    market = v; symbol = null; renderSymbols(); updateGo();
+  })));
+  TFS.forEach(t => $("tfs").appendChild(chip(t, true, v => { tf = v; updateGo(); }, t === tf)));
+}
+
+function renderSymbols(){
+  const box = $("symbols");
+  box.innerHTML = "";
+  MARKETS[market].forEach(s => box.appendChild(chip(s, false, v => { symbol = v; updateGo(); })));
+}
+
+$("cam").addEventListener("change", e => { handleFile(e.target.files[0]); e.target.value = ""; });
+$("gal").addEventListener("change", e => { handleFile(e.target.files[0]); e.target.value = ""; });
+$("go").onclick = analyze;
+
+function updateGo(){
+  $("go").disabled = !(b64 && market && symbol);
+  if(!market) setStatus("// select a market");
+  else if(!symbol) setStatus("// select an instrument");
+  else if(!b64) setStatus("// capture or load a chart");
+  else setStatus("// ready · " + symbol + " · " + tf);
+}
+
+function loadImage(src){
+  return new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error("could not read image"));
+    i.src = src;
+  });
+}
+
+async function handleFile(file){
+  if(!file) return;
+  try{
+    const img = await loadImage(URL.createObjectURL(file));
+    const s = Math.min(1, 1280 / Math.max(img.width, img.height));
+    base = document.createElement("canvas");
+    base.width = Math.round(img.width * s);
+    base.height = Math.round(img.height * s);
+    base.getContext("2d").drawImage(img, 0, 0, base.width, base.height);
+    b64 = base.toDataURL("image/jpeg", 0.85).split(",")[1];
+    cv.width = base.width; cv.height = base.height;
+    $("scanwrap").classList.add("show");
+    drawBase();
+    $("result").classList.add("hidden");
+    updateGo();
+  }catch(err){
+    setStatus("// error: " + err.message, true);
+  }
+}
+
+function drawBase(){ ctx.drawImage(base, 0, 0); }
+function setStatus(msg, isErr){
+  const s = $("status");
+  s.textContent = msg;
+  s.className = "status" + (isErr ? " err" : "");
+}
+
+async function analyze(){
+  if(!b64 || !symbol) return;
+  $("go").disabled = true;
+  $("scanwrap").classList.add("scanning");
+  setStatus("// running " + STRATS.length + " lenses on " + symbol + "...");
+  try{
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({image: b64, symbol, tf})
+    });
+    const parsed = await response.json();
+    if(!response.ok) throw new Error(parsed.error || "server error");
+    const strategies = (parsed.strategies || []).filter(s => ["BUY","SELL","HOLD"].includes(s.signal));
+    if(!strategies.length) throw new Error("no usable lens results");
+    const r = vote(strategies);
+    show(r);
+    setStatus("// consensus locked · " + r.verdict);
+  }catch(err){
+    setStatus("// analysis failed: " + err.message, true);
+  }finally{
+    $("scanwrap").classList.remove("scanning");
+    $("go").disabled = false;
+  }
+}
+
+function vote(strategies){
+  const counts = {BUY: 0, SELL: 0, HOLD: 0};
+  strategies.forEach(s => counts[s.signal]++);
+  const max = Math.max(counts.BUY, counts.SELL, counts.HOLD);
+  const leaders = Object.keys(counts).filter(k => counts[k] === max);
+  const verdict = leaders.length === 1 ? leaders[0] : "HOLD";
+  const agreeing = strategies.filter(s => s.signal === verdict);
+  const avg = key => {
+    const vals = agreeing.map(s => s[key]).filter(v => typeof v === "number");
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+  const levels = verdict === "HOLD" ? null : {entry: avg("entry_y"), sl: avg("stop_y"), tp: avg("target_y")};
+  return {verdict, counts, strategies, levels, total: strategies.length};
+}
+
+function pct(y){ return y == null ? "-" : Math.round(y * 100) + "%"; }
+
+function show(r){
+  $("verdict").textContent = r.verdict;
+  $("verdict").className = "verdict " + r.verdict;
+  $("agree").textContent = `${r.counts[r.verdict]}/${r.total} lenses → ${r.verdict}  ·  BUY ${r.counts.BUY} · SELL ${r.counts.SELL} · HOLD ${r.counts.HOLD}`;
+  $("lEntry").textContent = r.levels ? pct(r.levels.entry) : "-";
+  $("lSl").textContent = r.levels ? pct(r.levels.sl) : "-";
+  $("lTp").textContent = r.levels ? pct(r.levels.tp) : "-";
+  const rows = r.strategies.map((s, i) =>
+    `<tr><td>${esc(STRATS[i] || s.name || "Lens")}</td>
+     <td class="sig ${s.signal}">${s.signal}</td>
+     <td>${Number(s.confidence) || 0}%</td>
+     <td>${esc(s.reason || "")}</td></tr>`).join("");
+  $("tbl").innerHTML = `<tr><th>Lens</th><th>Signal</th><th>Conf</th><th>Reason</th></tr>` + rows;
+  $("result").classList.remove("hidden");
+  drawOverlay(r);
+}
+
+function drawOverlay(r){
+  drawBase();
+  if(!r.levels) return;
+  const W = cv.width, H = cv.height;
+  const fs = Math.max(14, Math.round(W / 36));
+  const lines = [
+    {y: r.levels.entry, color: "#5ec8ff", label: "ENTRY"},
+    {y: r.levels.sl, color: "#ff3d6e", label: "STOP"},
+    {y: r.levels.tp, color: "#00ff9c", label: "TP"}
+  ];
+  ctx.font = `bold ${fs}px ui-monospace, Menlo, monospace`;
+  lines.forEach(l => {
+    if(l.y == null) return;
+    const py = Math.min(H - 2, Math.max(2, l.y * H));
+    ctx.setLineDash([10, 6]);
+    ctx.lineWidth = Math.max(2, W / 400);
+    ctx.strokeStyle = l.color;
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+    ctx.setLineDash([]);
+    const text = l.label + " " + Math.round(l.y * 100) + "%";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(0,0,0,0.85)";
+    ctx.strokeText(text, 10, py - 8);
+    ctx.fillStyle = l.color;
+    ctx.fillText(text, 10, py - 8);
+  });
+}
+
+function subscribe(tier){
+  $("planNote").textContent = tier === "Pro"
+    ? "// Pro checkout is not connected yet · preview only"
+    : "// you are on the Free plan";
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+buildPickers();
+updateGo();
+</script>
+</body>
+</html>
